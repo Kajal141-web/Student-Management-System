@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Management System</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background: #f2f4f8;
+            color: #333;
+        }
+
+        header {
+            background: #342b63;
+            color: white;
+            text-align: center;
+            padding: 25px;
+        }
+
+        header p {
+            margin-top: 8px;
+            color: #ddd;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1100px;
+            margin: 30px auto;
+        }
+
+        .form-box, .table-box {
+            background: white;
+            padding: 25px;
+            margin-bottom: 25px;
+            border-radius: 10px;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+        }
+
+        h2 {
+            margin-bottom: 20px;
+            color: #342b63;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            outline: none;
+        }
+
+        input:focus, select:focus {
+            border-color: #6353a6;
+        }
+
+        button {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            color: white;
+            background: #51418c;
+            margin-top: 15px;
+        }
+
+        button:hover {
+            opacity: 0.85;
+        }
+
+        .search {
+            margin-bottom: 15px;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 650px;
+        }
+
+        th, td {
+            padding: 13px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background: #eeeafa;
+            color: #342b63;
+        }
+
+        .edit {
+            background: #23865b;
+            margin-right: 5px;
+        }
+
+        .delete {
+            background: #d94343;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        @media (max-width: 600px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                width: 94%;
+            }
+
+            .form-box, .table-box {
+                padding: 17px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>Student Management System</h1>
+        <p>Manage Student Records Easily</p>
+    </header>
+
+    <div class="container">
+
+        <div class="form-box">
+            <h2 id="formTitle">Add New Student</h2>
+
+            <form id="studentForm">
+                <div class="form-grid">
+                    <input type="text" id="roll" placeholder="Roll Number" required>
+                    <input type="text" id="name" placeholder="Student Name" required>
+                    <input type="email" id="email" placeholder="Email Address" required>
+                    <input type="text" id="course" placeholder="Course" required>
+                    <input type="number" id="year" placeholder="Semester" min="1" max="8" required>
+                    <input type="tel" id="phone" placeholder="Phone Number" required>
+                </div>
+
+                <button type="submit" id="submitBtn">Add Student</button>
+                <button type="button" id="cancelBtn" onclick="resetForm()" style="display:none;">
+                    Cancel
+                </button>
+            </form>
+        </div>
+
+        <div class="table-box">
+            <h2>Student Records</h2>
+
+            <input type="text" class="search" id="search"
+                placeholder="Search by name or roll number..."
+                oninput="displayStudents()">
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Roll No.</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Course</th>
+                            <th>Semester</th>
+                            <th>Phone</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="studentList">
+                    </tbody>
+                </table>
+            </div>
+
+            <p id="totalStudents">Total Students: 0</p>
+        </div>
+
+    </div>
+
+    <footer>
+        <p>Student Management System | BCA Project</p>
+    </footer>
+
+    <script>
+        // Get student records from Local Storage
+        let students = JSON.parse(localStorage.getItem("students")) || [];
+
+        let editIndex = -1;
+
+        // Save records in Local Storage
+        function saveData() {
+            localStorage.setItem("students", JSON.stringify(students));
+        }
+
+        // Add or update student
+        document.getElementById("studentForm").addEventListener("submit", function(event) {
+            event.preventDefault();
+
+            let student = {
+                roll: document.getElementById("roll").value.trim(),
+                name: document.getElementById("name").value.trim(),
+                email: document.getElementById("email").value.trim(),
+                course: document.getElementById("course").value.trim(),
+                year: document.getElementById("year").value,
+                phone: document.getElementById("phone").value.trim()
+            };
+
+            // Check for duplicate roll number
+            let duplicate = students.some(function(item, index) {
+                return item.roll.toLowerCase() === student.roll.toLowerCase()
+                    && index !== editIndex;
+            });
+
+            if (duplicate) {
+                alert("This roll number already exists!");
+                return;
+            }
+
+            if (editIndex === -1) {
+                students.push(student);
+                alert("Student added successfully!");
+            } else {
+                students[editIndex] = student;
+                alert("Student updated successfully!");
+            }
+
+            saveData();
+            resetForm();
+            displayStudents();
+        });
+
+        // Display all student records
+        function displayStudents() {
+            let list = document.getElementById("studentList");
+            let searchValue = document.getElementById("search").value.toLowerCase();
+
+            list.innerHTML = "";
+
+            let count = 0;
+
+            students.forEach(function(student, index) {
+                if (
+                    student.name.toLowerCase().includes(searchValue) ||
+                    student.roll.toLowerCase().includes(searchValue)
+                ) {
+                    let row = document.createElement("tr");
+
+                    // Safely display student information
+                    [
+                        student.roll, student.name, student.email,
+                        student.course, student.year, student.phone
+                    ].forEach(function(value) {
+                        let cell = document.createElement("td");
+                        cell.textContent = value;
+                        row.appendChild(cell);
+                    });
+
+                    let actionCell = document.createElement("td");
+
+                    let editButton = document.createElement("button");
+                    editButton.textContent = "Edit";
+                    editButton.className = "edit";
+                    editButton.onclick = function() {
+                        editStudent(index);
+                    };
+
+                    let deleteButton = document.createElement("button");
+                    deleteButton.textContent = "Delete";
+                    deleteButton.className = "delete";
+                    deleteButton.onclick = function() {
+                        deleteStudent(index);
+                    };
+
+                    actionCell.appendChild(editButton);
+                    actionCell.appendChild(deleteButton);
+                    row.appendChild(actionCell);
+
+                    list.appendChild(row);
+                    count++;
+                }
+            });
+
+            if (count === 0) {
+                list.innerHTML = '<tr><td colspan="7">No student records found.</td></tr>';
+            }
+
+            document.getElementById("totalStudents").textContent =
+                "Total Students: " + students.length;
+        }
+
+        // Edit student details
+        function editStudent(index) {
+            let student = students[index];
+
+            document.getElementById("roll").value = student.roll;
+            document.getElementById("name").value = student.name;
+            document.getElementById("email").value = student.email;
+            document.getElementById("course").value = student.course;
+            document.getElementById("year").value = student.year;
+            document.getElementById("phone").value = student.phone;
+
+            editIndex = index;
+
+            document.getElementById("formTitle").textContent = "Update Student";
+            document.getElementById("submitBtn").textContent = "Update Student";
+            document.getElementById("cancelBtn").style.display = "inline-block";
+
+            window.scrollTo(0, 0);
+        }
+
+        // Delete student record
+        function deleteStudent(index) {
+            if (confirm("Are you sure you want to delete this student?")) {
+                students.splice(index, 1);
+                saveData();
+                displayStudents();
+            }
+        }
+
+        // Reset form
+        function resetForm() {
+            document.getElementById("studentForm").reset();
+
+            editIndex = -1;
+
+            document.getElementById("formTitle").textContent = "Add New Student";
+            document.getElementById("submitBtn").textContent = "Add Student";
+            document.getElementById("cancelBtn").style.display = "none";
+        }
+
+        // Show saved records when page opens
+        displayStudents();
+    </script>
+
+</body>
+</html>
